@@ -13,6 +13,10 @@ dist
 dist-ssr
 coverage
 *.local
+*.env*
+
+__pycache__/
+env/
 
 # Editor directories and files
 .vscode/*
