@@ -14,6 +14,7 @@ dist-ssr
 coverage
 *.local
 *.env*
+tome.*
 
 __pycache__/
 env/
