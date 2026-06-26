@@ -18,6 +18,7 @@ tome*.*
 
 __pycache__/
 env/
+tome*/
 
 # Editor directories and files
 .vscode/*
