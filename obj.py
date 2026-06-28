@@ -52,7 +52,8 @@ def write_obj(content:list[str], name:str|None=None, path:str|None=None, ) -> OB
     ]
     
     for l in content:
-        cont.append(l + '\n')
+        if len(l) >= 2 and l[:-2] != '\n':
+            cont.append(l + '\n')
     
     if not path:
         root = tk.Tk()

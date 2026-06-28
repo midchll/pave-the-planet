@@ -128,10 +128,21 @@ def insert_elevations(df:pd.DataFrame, data:dict[tuple[float,float],float]) -> N
         df.loc[(df['x'] == k[1]) & (df['y'] == k[0]), ['z']] = v
 
 
+def normalize(df:pd.DataFrame) -> pd.DataFrame:
+    '''Translate raw coordinates around origin'''
+    copy = df.copy()
+    
+    copy['x'] -= df['x'][0]
+    copy['y'] -= df['y'][0]
+    copy['z'] -= df['z'][0]
+    
+    return copy
+
+
 def pchip_interpolate(df:pd.DataFrame) -> pd.DataFrame:
     '''Interpolate x, y, z positions versus distance along path'''
     x = df['x'].to_numpy()
-    y = df['y'].to_numpy()
+    y = df['y'].to_numpy() 
     z = df['z'].to_numpy()
     
     dx = np.diff(x)
@@ -146,14 +157,34 @@ def pchip_interpolate(df:pd.DataFrame) -> pd.DataFrame:
     interp_y = PchipInterpolator(distance, y)
     interp_z = PchipInterpolator(distance, z)
     
-    new_x = interp_x(new_distance)
-    new_y = interp_y(new_distance)
-    new_z = interp_z(new_distance)
+    new_x = np.round(interp_x(new_distance), 5)
+    new_y = np.round(interp_y(new_distance), 5)
+    new_z = np.round(interp_z(new_distance), 5)
     
     fine_path = pd.DataFrame({'x': new_x, 'y': new_y, 'z': new_z})
     
     return fine_path
 
+
+def degrees_to_meters(df:pd.DataFrame) -> None:
+    '''Convert decimal degree coords into verts in meters with tangent plane approx'''
+    lon = df['x'].to_numpy()
+    lat = df['y'].to_numpy()
+    elv = df['z'].to_numpy()
+    
+    R = 6378137
+    lat0 = np.radians(lat[0])
+
+    df['x'] = np.radians(lon - lon[0]) * R * np.cos(lat0)
+    df['y'] = np.radians(lat - lat[0]) * R
+    df['z'] = elv - elv[0]
+
+
+def df_to_file(df:pd.DataFrame, name:str|None=None, dir:str|None=None) -> None:
+    '''Write dataframe rows to file'''
+    dir = dir or '.'
+    name = name or 'ptp_verts'
+    df.to_csv(f'{dir}{name}.csv', index=False)
     
 
 if __name__ == "__main__":
@@ -195,17 +226,23 @@ if __name__ == "__main__":
         
     insert_elevations(d, TEST_ELEVS)
     
+    verts = normalize(d)
+    degrees_to_meters(verts)
+    
     ##### 2D
-    fig2d = plt.scatter(x=d['x'], y=d['y'])
+    fig2d = plt.scatter(x=verts['x'], y=verts['y'])
     
     ##### 3D
     fig3d = plt.figure()
     ax = fig3d.add_subplot(projection='3d')
-    ax.scatter(xs=d['x'], ys=d['y'], zs=d['z']) # type: ignore
+    ax.scatter(xs=verts['x'], ys=verts['y'], zs=verts['z']) # type: ignore
     
     ##### 3D Interpolated
-    fine_d = pchip_interpolate(d)
+    fine_verts = pchip_interpolate(verts)
+    # SAVE TO CSV
+    df_to_file(fine_verts, 'tome_test_segment', 'tome_z_test/')
+    
     figinter3d = plt.figure()
     axx = figinter3d.add_subplot(projection='3d')
-    axx.scatter(xs = fine_d['x'], ys = fine_d['y'], zs = fine_d['z'], c='red') # type: ignore
+    axx.scatter(xs = fine_verts['x'], ys = fine_verts['y'], zs = fine_verts['z'], c='red') # type: ignore
     plt.show()
